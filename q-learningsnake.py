@@ -19,7 +19,7 @@ dis_width = 600
 dis_height = 400
  
 dis = pygame.display.set_mode((dis_width, dis_height))
-pygame.display.set_caption('Snake Game by Edureka')
+pygame.display.set_caption('Q learning Snake Game by EdwinK')
  
 clock = pygame.time.Clock()
  
@@ -109,141 +109,138 @@ def message(msg, color):
 
 # Game loop with Q-learning
 def gameLoop():
-    # ... [Initialization and game setup] ...
-    agent = QLearningAgent(actions=["LEFT", "STRAIGHT", "RIGHT"])  # Define agent actions
-      # Initialize the direction variable
-    direction = "UP"  # Or "DOWN", "LEFT", "RIGHT", depending on your choice
+    # Speed levels
+    speed_levels = {pygame.K_1: 10, pygame.K_2: 20, pygame.K_3: 30}
+    global snake_speed
     
-    # ... [Rest of the game initialization] ...
-    game_over = False
-    game_close = False
- 
-    x1 = dis_width / 2
-    y1 = dis_height / 2
- 
-    x1_change = 0
-    y1_change = 0
- 
-    snake_List = []
-    Length_of_snake = 1
- 
-    foodx = round(random.randrange(0, dis_width - snake_block) / 10.0) * 10.0
-    foody = round(random.randrange(0, dis_height - snake_block) / 10.0) * 10.0
+    # Initialize the QLearningAgent
+    agent = QLearningAgent(actions=["LEFT", "STRAIGHT", "RIGHT"])
 
-    while not game_over:
-        # Define the current state with more details
-        angle_to_food = calculate_angle((x1, y1), (foodx, foody))
-        distance_to_food = calculate_distance((x1, y1), (foodx, foody))
-        danger = is_danger_close((x1, y1), snake_List, direction)
+    
+    while True:  # Main game loop
+        # Initialize the direction variable
+        direction = "UP"
+        game_over = False
+        game_close = False
+        # Game initialization variables
+        x1, y1 = dis_width / 2, dis_height / 2
+        x1_change, y1_change = 0, 0
+        snake_List = []
+        Length_of_snake = 1
+        foodx = round(random.randrange(0, dis_width - snake_block) / 10.0) * 10.0
+        foody = round(random.randrange(0, dis_height - snake_block) / 10.0) * 10.0
 
-        # Define the current state
-        state = (x1, y1, direction, angle_to_food, distance_to_food, danger) # Simplified state representation
+        while not game_over:
+            while game_close:
+                # Display losing message
+                dis.fill(blue)
+                message("You Lost! Press Q-Quit", red)
+                Your_score(Length_of_snake - 1)
+                pygame.display.update()
+                
+                for event in pygame.event.get():
+                    if event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_q:
+                            pygame.quit()
+                            quit()
+                        else:
+                            game_close = False
 
-        # Let the agent choose the action
-        action = agent.choose_action(state)
+            # Define the current state with more details
+            angle_to_food = calculate_angle((x1, y1), (foodx, foody))
+            distance_to_food = calculate_distance((x1, y1), (foodx, foody))
+            danger = is_danger_close((x1, y1), snake_List, direction)
+            # Define the current state
+            state = (x1, y1, direction, angle_to_food, distance_to_food, danger)
 
-        # Apply the chosen action to update direction
-        if action == "LEFT":
+            # Let the agent choose the action
+            action = agent.choose_action(state)
+
+            # Apply the chosen action to update direction
+            if action == "LEFT":
+                if direction == "UP":
+                    direction = "LEFT"
+                elif direction == "DOWN":
+                    direction = "RIGHT"
+                elif direction == "LEFT":
+                    direction = "DOWN"
+                elif direction == "RIGHT":
+                    direction = "UP"
+            elif action == "STRAIGHT":
+                # No change in direction
+                pass
+            elif action == "RIGHT":
+                if direction == "UP":
+                    direction = "RIGHT"
+                elif direction == "DOWN":
+                    direction = "LEFT"
+                elif direction == "LEFT":
+                    direction = "UP"
+                elif direction == "RIGHT":
+                    direction = "DOWN"
+
+            # Update position of the snake based on the direction
             if direction == "UP":
-                direction = "LEFT"
+                y1_change = -snake_block
+                x1_change = 0
             elif direction == "DOWN":
-                direction = "RIGHT"
+                y1_change = snake_block
+                x1_change = 0
             elif direction == "LEFT":
-                direction = "DOWN"
+                x1_change = -snake_block
+                y1_change = 0
             elif direction == "RIGHT":
-                direction = "UP"
-        elif action == "STRAIGHT":
-            # No change in direction
-            pass
-        elif action == "RIGHT":
-            if direction == "UP":
-                direction = "RIGHT"
-            elif direction == "DOWN":
-                direction = "LEFT"
-            elif direction == "LEFT":
-                direction = "UP"
-            elif direction == "RIGHT":
-                direction = "DOWN"
-        # Check for events (key presses, closing window, etc.)
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                game_over = True
+                x1_change = snake_block
+                y1_change = 0
 
-        # Update position of the snake based on the direction
-        if direction == "UP":
-            y1_change = -snake_block
-            x1_change = 0
-        elif direction == "DOWN":
-            y1_change = snake_block
-            x1_change = 0
-        elif direction == "LEFT":
-            x1_change = -snake_block
-            y1_change = 0
-        elif direction == "RIGHT":
-            x1_change = snake_block
-            y1_change = 0
+            # Apply the position change
+            x1 += x1_change
+            y1 += y1_change
 
-        # Apply the position change
-        x1 += x1_change
-        y1 += y1_change
-
-        # Check for collisions with walls or itself
-        if x1 >= dis_width or x1 < 0 or y1 >= dis_height or y1 < 0:
-            game_close = True
-        for segment in snake_List[:-1]:
-            if segment == [x1, y1]:
+            # Check for collisions with walls or itself
+            if x1 >= dis_width or x1 < 0 or y1 >= dis_height or y1 < 0:
                 game_close = True
+            for segment in snake_List[:-1]:
+                if segment == [x1, y1]:
+                    game_close = True
 
-        # Update the state after the action
-        next_state = (x1, y1, new_direction)
+            # Update the state after the action
+            next_state = (x1, y1, direction)
 
-        # Calculate the reward
-        reward = calculate_reward(game_close, x1, y1, foodx, foody)
+            # Calculate the reward
+            reward = calculate_reward(game_close, x1, y1, foodx, foody)
 
-        # Let the agent learn from the experience
-        agent.learn(state, action, reward, next_state)
+            # Let the agent learn from the experience
+            agent.learn(state, action, reward, next_state)
 
-        # Render the snake and food
-        dis.fill(blue)
-        pygame.draw.rect(dis, green, [foodx, foody, snake_block, snake_block])
-        our_snake(snake_block, snake_List)
-        Your_score(Length_of_snake - 1)
-        pygame.display.update()
-
-        # Check if the snake has eaten the food
-        if x1 == foodx and y1 == foody:
-            foodx = round(random.randrange(0, dis_width - snake_block) / 10.0) * 10.0
-            foody = round(random.randrange(0, dis_height - snake_block) / 10.0) * 10.0
-            Length_of_snake += 1
-
-        # Update snake's body
-        snake_Head = []
-        snake_Head.append(x1)
-        snake_Head.append(y1)
-        snake_List.append(snake_Head)
-        if len(snake_List) > Length_of_snake:
-            del snake_List[0]
-
-        clock.tick(snake_speed)
-
-         # Check if the game is over due to collision
-        if game_close:
-            # Display losing message and wait for player's response (restart or quit)
+            # Render the snake and food
             dis.fill(blue)
-            message("You Lost! Press C-Play Again or Q-Quit", red)
+            pygame.draw.rect(dis, green, [foodx, foody, snake_block, snake_block])
+            our_snake(snake_block, snake_List)
             Your_score(Length_of_snake - 1)
             pygame.display.update()
 
-            for event in pygame.event.get():
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_q:
-                        game_over = True
-                        game_close = False
-                    if event.key == pygame.K_c:
-                        gameLoop()
+            # Check if the snake has eaten the food
+            if x1 == foodx and y1 == foody:
+                foodx = round(random.randrange(0, dis_width - snake_block) / 10.0) * 10.0
+                foody = round(random.randrange(0, dis_height - snake_block) / 10.0) * 10.0
+                Length_of_snake += 1
 
-        clock.tick(snake_speed)
+            # Update snake's body
+            snake_Head = []
+            snake_Head.append(x1)
+            snake_Head.append(y1)
+            snake_List.append(snake_Head)
+            if len(snake_List) > Length_of_snake:
+                del snake_List[0]
 
+            clock.tick(snake_speed)
+            
+            # Restart the game if closed
+            if game_close:
+                game_close = False
+                break
+                
     pygame.quit()
     quit()
 
